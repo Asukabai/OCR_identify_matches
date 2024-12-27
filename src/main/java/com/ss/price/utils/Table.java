@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
-* 表格文字识别
+* 表格文字识别——使用JSON静态配置文件实现参数外置化
 */
 public class Table {
     private static List<String> nameAliases;
