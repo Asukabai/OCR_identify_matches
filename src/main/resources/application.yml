@@ -1,0 +1,57 @@
+
+#spring:
+#  application:
+#    name: qr_code
+#  datasource: # mybatis-plus DataSource Config
+#    driver-class-name: com.mysql.cj.jdbc.Driver
+#    url: jdbc:mysql://localhost:3306/test?maxAllowedPacket=33554432
+#    username: root
+#    password: 123456
+#  servlet:
+#    multipart:
+#      max-file-size: 100MB
+#      max-request-size: 500MB
+
+spring:
+  application:
+    name: qr_price
+  datasource: # mybatis-plus DataSource Config
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    #url: jdbc:mysql://127.0.0.1:3306/test?maxAllowedPacket=33554432
+    url: jdbc:mysql://localhost:3306/ss_price?maxAllowedPacket=33554432
+    username: root
+    password: 123456
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 500MB
+
+
+server:
+  port: 20122
+# port: 20124
+#  servlet:
+#    context-path: /ddinguia/web
+
+mybatis-plus:
+  type-aliases-package: com.ss.price.entity  # 使用点号分隔符
+  mapper-locations: classpath:mapper/*.xml
+  # 控制台打印 SQL 语句
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  # 全局配置
+  global-config:
+    field-strategy: NOT_EMPTY
+    db-config:  # 修改为下划线连接
+      # 全局逻辑删除的字段名
+      logic-delete-field: is_deleted
+      # 逻辑已删除值
+      logic-delete-value: 1
+      # 逻辑未删除值
+      logic-not-delete-value: 0
+
+
+file:
+  path:
+    windows: D:\Project\SensorSmart\ssprice\upload
+    linux: /root/zichanliuzhuan/files/upload/
