@@ -1,3 +1,8 @@
+## 项目简介
+
+基于的OCR文本录入识别信息匹配系统
+
+
 ## 项目初始化
 
 echo "# OCR_identify_matches" >> README.md
