@@ -23,3 +23,9 @@ git push -u origin master
 git pull
 ![image](https://github.com/user-attachments/assets/bee5833f-d8e5-42ad-bd20-bc67b3686d86)
 
+### 初始化 SpringBoot 框架
+maven 3.6.5
+MySQL 5.6.5
+jdk 1.8 + mybatis-plus 3.5.6
+
+## 功能介绍
