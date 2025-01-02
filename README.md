@@ -19,13 +19,13 @@
 
 ### 引入 Git
 
-```git init && \```
-```git add README.md && \```
-```git commit -m "first commit"```
-```git branch -M master```
-```git remote add origin https://github.com/Asukabai/OCR_identify_matches.git```
-```git push -u origin master```
-```git pull```
+```git init && \n ```
+```git add README.md \n ```
+```git commit -m "first commit" \n ```
+```git branch -M master \n ```
+```git remote add origin https://github.com/Asukabai/OCR_identify_matches.git \n ```
+```git push -u origin master \n ```
+```git pull \n ```
 ### 初始化 SpringBoot 框架
 maven 3.6.5
 MySQL 5.6.5
