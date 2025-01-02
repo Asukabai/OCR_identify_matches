@@ -26,10 +26,6 @@ git branch -M master
 git remote add origin https://github.com/Asukabai/OCR_identify_matches.git
 git push -u origin master
 git pull```
-
-
-![image](https://github.com/user-attachments/assets/bee5833f-d8e5-42ad-bd20-bc67b3686d86)
-
 ### 初始化 SpringBoot 框架
 maven 3.6.5
 MySQL 5.6.5
