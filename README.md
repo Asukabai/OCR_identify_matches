@@ -14,7 +14,8 @@
 ## 项目初始化
 
 ### 引入 Git
-git init
+
+```git init
 git add README.md
 git commit -m "first commit"
 git branch -M master
@@ -32,25 +33,42 @@ jdk 1.8 + mybatis-plus 3.5.6
 
 ### 1.0 版本主要功能
 识别整个图片的所有信息，数据库存储图片信息，对象单位是图片，搜索也是按照识别图片内容进行模糊搜索
+![image](https://github.com/user-attachments/assets/423d39b0-a4b7-4da5-ae7d-faf8d8819113)
 
 ### 1.0 版本库表设计
 
 ### 2.0 版本主要功能
-将识别内容细分，由于图片中可能包含多个产品信息，所以将识别内容细分为多个对象，对象单位是产品信息，搜索也是按照识别到的产品信息进行模糊搜索
+将识别内容细分，由于图片中可能包含多个产品信息，所以将识别内容细分为多个对象，对象单位是产品信息，搜索也是按照识别到的产品信息进行模糊搜索。
 
 ### 2.0 版本库表设计
 
-产品名称 单价 型号，厂家（乙方） 联系人 电话 采购时间（精确到年月）
+#### 产品信息表 `product_info`
+该表用于存储识别出的产品信息，包含产品的基本信息以及采购相关内容。
 
+| 字段名           | 类型           | 描述                   |
+| ---------------- | -------------- | ---------------------- |
+| `id`             | bigint(20)      | 主键，自增              |
+| `file_id`        | bigint(20)      | 文件ID，关联上传文件   |
+| `product_name`   | varchar(255)    | 产品名称               |
+| `model`          | varchar(100)    | 产品型号               |
+| `unit_price`     | varchar(50)     | 产品单价               |
+| `manufacturer`   | varchar(255)    | 厂家（乙方）           |
+| `contact_person` | varchar(100)    | 联系人                 |
+| `phone`          | varchar(20)     | 电话                   |
+| `purchase_time`  | varchar(100)    | 采购时间（精确到年月） |
+
+#### SQL 创建语句
+
+```sql
 CREATE TABLE `product_info` (
-`id` bigint(20) NOT NULL AUTO_INCREMENT,
-`file_id` bigint(20) NOT NULL,
-`product_name` varchar(255) DEFAULT NULL,
-`model` varchar(100) DEFAULT NULL,
-`unit_price` varchar(50) DEFAULT NULL,
-`manufacturer` varchar(255) DEFAULT NULL,
-`contact_person` varchar(100) DEFAULT NULL,
-`phone` varchar(20) DEFAULT NULL,
-`purchase_time` varchar(100) DEFAULT NULL,
-PRIMARY KEY (`id`)
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `file_id` bigint(20) NOT NULL,
+  `product_name` varchar(255) DEFAULT NULL,
+  `model` varchar(100) DEFAULT NULL,
+  `unit_price` varchar(50) DEFAULT NULL,
+  `manufacturer` varchar(255) DEFAULT NULL,
+  `contact_person` varchar(100) DEFAULT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `purchase_time` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
