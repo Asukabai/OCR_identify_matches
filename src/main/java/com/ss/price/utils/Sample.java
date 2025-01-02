@@ -20,7 +20,7 @@ import java.io.*;
  * </dependency>
  */
 
-class Sample {
+public class Sample {
 
     // eu9IasMzMRvDADcFyivYUlIC
     public static final String API_KEY = "eu9IasMzMRvDADcFyivYUlIC";
@@ -57,7 +57,7 @@ class Sample {
      * @return 鉴权签名（Access Token）
      * @throws IOException IO异常
      */
-    static String getAccessToken() throws IOException {
+    public static String getAccessToken() throws IOException {
         MediaType mediaType = MediaType.parse("application/x-www-form-urlencoded");
         RequestBody body = RequestBody.create(mediaType, "grant_type=client_credentials&client_id=" + API_KEY
                 + "&client_secret=" + SECRET_KEY);

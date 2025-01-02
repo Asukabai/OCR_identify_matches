@@ -2,15 +2,14 @@ package com.ss.price.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.ss.price.config.FileProperties;
-import com.ss.price.entity.FileImage;
-import com.ss.price.entity.FileInfo;
-import com.ss.price.entity.UploadLog;
+import com.ss.price.entity.*;
 import com.ss.price.entity.dto.RespondDto;
-import com.ss.price.mapper.FileImageMapper;
-import com.ss.price.mapper.FileInfoMapper;
-import com.ss.price.mapper.UploadLogMapper;
-import com.ss.price.utils.RespondUtils;
+import com.ss.price.mapper.*;
+import com.ss.price.utils.*;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
@@ -31,9 +30,11 @@ import javax.annotation.Resource;
 import javax.imageio.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import javax.imageio.metadata.IIOMetadata;
 import javax.imageio.stream.ImageOutputStream;
 
@@ -56,6 +57,14 @@ public class PriceFileController {
     FileInfoMapper fileInfoMapper;
     @Resource
     UploadLogMapper uploadLogMapper;
+
+    // 增加配置类文件对应的Mapper
+    @Resource
+    ConfigTypesMapper configTypesMapper;
+    @Resource
+    ConfigItemsMapper configItemsMapper;
+    @Resource
+    ProductInfoMapper productInfoMapper;
 
     // 在 getUploadLog 方法中进行修改
     @RequestMapping(value = "/getUploadLog", method = {RequestMethod.GET, RequestMethod.POST})
@@ -249,8 +258,10 @@ public class PriceFileController {
             String imageFileName = baseName + "_" + (page + 1) + ".jpg"; // imageFileName：生成图像文件名，格式为 基本名称_页码.png。
             File imageFile = new File(dir.getAbsolutePath() + File.separator + baseName + File.separator + imageFileName); // 创建一个 File 对象，表示要保存的图像文件。
             imageFile.getParentFile().mkdirs(); // 确保目标目录存在，如果不存在则创建。
-            // 调用 OCR 并获取结果
+            // 调用 umi-OCR 并获取结果
             String ocrResult = sendToOcrAndStoreResult(imageBytes, imageFileName);
+            // 调用 baidu-OCR 获取PDF中表格的识别结果，并解析相关的字段将结果存储到数据库中，如果识别失败，则将失败的文件名添加到 failedFiles 列表中。
+            baiDuSDKTable(imageBytes, imageFileName);
             // 如果 OCR 成功，则将图像数据写入文件
             if (!ocrResult.isEmpty()) {
                 try (FileOutputStream fos = new FileOutputStream(imageFile)) { // FileOutputStream：将图像数据写入文件。
@@ -280,8 +291,189 @@ public class PriceFileController {
         }
         document.close(); // 关闭 PDDocument 对象，释放资源
     }
+    private String baiDuSDKTable(byte[] imageBytes, String fileName) {
+        // 调用百度表格OCR_请求url
+        String url = "https://aip.baidubce.com/rest/2.0/ocr/v1/table";
+        try {
+            String imgStr = Base64Util.encode(imageBytes);
+            String imgParam = URLEncoder.encode(imgStr, "UTF-8");
+            String param = "image=" + imgParam;
+            // 注意这里仅为了简化编码每一次请求都去获取access_token，线上环境access_token有过期时间， 客户端可自行缓存，过期后重新获取。
+            String accessToken = Sample.getAccessToken();
+            String result = HttpUtil.post(url, accessToken, param);
+            System.out.println(result);
+            // 判断识别的识别结果
+            if (result.contains("error_code")) {
+                System.out.println("百度表格OCR_请求失败");
+                return null;
+            } else {
+                System.out.println("百度表格OCR_请求成功");
+                // 如果请求成功，则解析图片中的表格数据
+                parseBaiDuOcrResult(result);
+            }
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 
-//     假设有一个方法 storeOcrResult 存储 OCR 结果到数据库
+
+    /**
+     * 解析百度表格OCR的识别结果
+     *
+     * 注入 ProductInfoMapper：在 PriceFileController 类中注入 ProductInfoMapper。
+     * 创建 ProductInfo 对象：在解析表格内容后，创建 ProductInfo 对象并设置相应的属性。
+     * 保存到数据库：使用 productInfoMapper.insert(productInfo) 将 ProductInfo 对象插入数据库。
+     *
+     * @param result
+     */
+    private void parseBaiDuOcrResult(String result) {
+        // 从数据库中读取配置
+        List<ConfigTypes> configTypes = configTypesMapper.selectList(null);
+        Map<String, List<ConfigItems>> configItemsMap = new HashMap<>();
+        for (ConfigTypes configType : configTypes) {
+            List<ConfigItems> items = configItemsMapper.selectByMap(Collections.singletonMap("config_type_id", configType.getId()));
+            configItemsMap.put(configType.getTypeName(), items);
+        }
+        // 初始化 nameAliases 和 specAliases
+        // nameAliases = [名称, 产品名称, 货物名称, 品名, 产品, 存货名称, 设备及产品名称、型号、规格, 设备或产品名称, 品牌, 商品名称, 货品名称, 品名Items]
+        // specAliases = [型号, 材质, 存货规格, 规格型号, 规格参数, 产品型号, 编码/规格型号, 产品规格（mm）, 产品规格(mm), 型号及规格, 规格及型号, 规格或图号 mm, 规格或图号mm, 规格Spec, 型号/封装]
+        List<String> nameAliases = configItemsMap.getOrDefault("产品名称", Collections.emptyList()).stream().map(ConfigItems::getAlias).collect(Collectors.toList());
+//        System.out.println("nameAliases = " + nameAliases);
+        List<String> specAliases = configItemsMap.getOrDefault("型号", Collections.emptyList()).stream().map(ConfigItems::getAlias).collect(Collectors.toList());
+//        System.out.println("specAliases = " + specAliases);
+        List<String> priceAliases = configItemsMap.getOrDefault("单价", Collections.emptyList()).stream().map(ConfigItems::getAlias).collect(Collectors.toList());
+        // 使用 Gson 解析 JSON 字符串
+        Gson gson = new Gson();
+        JsonObject jsonObject = gson.fromJson(result, JsonObject.class);
+        JsonArray tablesResult = jsonObject.getAsJsonArray("tables_result");
+        JsonObject firstTable = tablesResult.get(0).getAsJsonObject();
+        JsonArray body = firstTable.getAsJsonArray("body");
+        // 获取表头信息
+        JsonArray headerCells = new JsonArray();
+        int firstRowColumnCount = 0;
+        for (int i = 0; i < body.size(); i++) {
+            JsonObject row = body.get(i).getAsJsonObject();
+            int rowStart = row.get("row_start").getAsInt();
+            if (rowStart == 0) {
+                firstRowColumnCount++;
+                headerCells.add(row); // 将表头行添加到 headerCells 中
+            } else {
+                break; // 假设表头只在第一行，遇到非表头行则停止计数
+            }
+        }
+        System.out.println("表头列数: " + firstRowColumnCount);
+        // 创建一个 Map 来存储列名和列索引的映射
+        Map<String, Integer> headerIndexMap = new HashMap<>();
+        // 遍历表头，找到“名称”和“规格参数”这两列的列索引
+        for (int i = 0; i < headerCells.size(); i++) {
+            JsonObject cell = headerCells.get(i).getAsJsonObject();
+            String words = cell.get("words").getAsString();
+            headerIndexMap.put(words, i);
+        }
+        // 输出表头信息
+        System.out.println("表头信息: " + headerCells);
+
+        // 获取“名称”和“规格参数”这两列的列索引
+        int nameColumnIndex = -1;
+        for (String alias : nameAliases) {
+            System.out.println("名称列表中都含有 : " + alias);
+            if (headerIndexMap.containsKey(alias)) {
+                nameColumnIndex = headerIndexMap.get(alias);
+                break;
+            }
+        }
+        if (nameColumnIndex == -1) {
+            throw new IllegalArgumentException("没有找到匹配的名称列");
+        }
+        int specColumnIndex = -1;
+        for (String alias : specAliases) {
+            System.out.println("型号列表中都含有 : " + alias);
+            if (headerIndexMap.containsKey(alias)) {
+                specColumnIndex = headerIndexMap.get(alias);
+                break;
+            }
+        }
+        if (specColumnIndex == -1) {
+            throw new IllegalArgumentException("没有找到匹配的规格参数列");
+        }
+
+        int priceColumnIndex = -1;
+
+        for (String alias : priceAliases) {
+            String cleanedAlias = cleanString(alias);
+            for (Map.Entry<String, Integer> entry : headerIndexMap.entrySet()) {
+                String cleanedHeader = cleanString(entry.getKey());
+                if (cleanedHeader.equals(cleanedAlias)) {
+                    priceColumnIndex = entry.getValue();
+                    break;
+                }
+            }
+        }
+        if (priceColumnIndex == -1) {
+            throw new IllegalArgumentException("没有找到匹配的价格参数列");
+        }
+        // 输出表头信息
+        System.out.println("**********************************************************************");
+        System.out.println("名称列索引: " + nameColumnIndex);
+        System.out.println("规格参数列索引: " + specColumnIndex);
+        System.out.println("价格参数列索引: " + priceColumnIndex);
+        // 创建一个 Map 来存储结果
+        Map<Integer, Map<String, String>> resultMap = new HashMap<>();
+        // 遍历 body 中的每一行，从第二行开始
+        for (int i = 0; i < body.size(); i++) {
+            JsonObject row = body.get(i).getAsJsonObject();
+            int rowStart = row.get("row_start").getAsInt();
+            if (rowStart == 0) {
+                continue;
+            }
+            int colStart = row.get("col_start").getAsInt();
+            String words = row.get("words").getAsString();
+            // 将当前行的单元格内容放入 resultMap 中
+            resultMap.putIfAbsent(rowStart, new HashMap<>());
+            resultMap.get(rowStart).putIfAbsent(String.valueOf(colStart), words);
+        }
+        // 打印 resultMap 以验证结果
+        for (Map.Entry<Integer, Map<String, String>> entry : resultMap.entrySet()) {
+            System.out.println("Row " + entry.getKey() + ": " + entry.getValue());
+        }
+        // 根据列索引获取“名称”和“规格参数”这两列的内容
+        for (Map.Entry<Integer, Map<String, String>> entry : resultMap.entrySet()) {
+            Integer rowIndex = entry.getKey();
+            Map<String, String> rowContent = entry.getValue();
+            String name = rowContent.getOrDefault(String.valueOf(nameColumnIndex), "");
+            String spec = rowContent.getOrDefault(String.valueOf(specColumnIndex), "");
+            String price = rowContent.getOrDefault(String.valueOf(priceColumnIndex), "");
+            if (name.isEmpty() || spec.isEmpty() || price.isEmpty()) {
+                continue;
+            }
+            System.out.println("Row " + rowIndex + ": 名称=" + name + ", 规格参数=" + spec + ", 价格参数=" + price);
+            if (!name.isEmpty() && !spec.isEmpty() && !price.isEmpty()) {
+                // 创建 ProductInfo 对象并保存到数据库
+                ProductInfo productInfo = new ProductInfo();
+                productInfo.setProductName(name);
+                productInfo.setModel(spec);
+                productInfo.setUnitPrice(price);
+                // 其他字段可以根据需要设置
+                productInfoMapper.insert(productInfo);
+            }
+
+        }
+
+    }
+
+    // 定义一个方法来清理字符串
+    private String cleanString(String input) {
+        if (input == null) {
+            return "";
+        }
+        // 使用正则表达式去除换行符、转义字符以及中英文形式的括号
+        return input.replaceAll("[\\n\\r\\\\（）()]", "").trim();
+    }
+
+
+    //     假设有一个方法 storeOcrResult 存储 OCR 结果到数据库
     @Transactional
     public void storeOcrResult(String fileName, String ocrResult, List<String> fileUrls) {
         try {
