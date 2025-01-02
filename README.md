@@ -28,7 +28,9 @@
 ```git pull ```
 ### 初始化 SpringBoot 框架
 maven 3.6.5
+<br>
 MySQL 5.6.5
+<br>
 jdk 1.8 + mybatis-plus 3.5.6
 
 ## 功能介绍和库表设计
@@ -42,8 +44,29 @@ jdk 1.8 + mybatis-plus 3.5.6
 <br> <!-- 插入两个换行符，增加文字与图片之间的空白 -->
 ### 1.0 版本库表设计
 
-### 2.0 版本主要功能
-将识别内容细分，由于图片中可能包含多个产品信息，所以将识别内容细分为多个对象，对象单位是产品信息，搜索也是按照识别到的产品信息进行模糊搜索。
+file_info 表
+
+| 字段名           | 类型           | 描述                               |
+| ---------------- | -------------- | ---------------------------------- |
+| `id`             | bigint(20)      | 文件的唯一标识符，主键，自动递增    |
+| `file_name`      | varchar(255)    | 文件名，不能为空                   |
+| `content`        | text           | 文件内容，文本类型，可以为空       |
+| `image_id`       | bigint(20)      | 图片的唯一标识符，外键，默认为 NULL |
+| `create_time`    | datetime        | 文件创建时间，默认当前时间         |
+| `update_time`    | datetime        | 文件更新时间，自动更新为当前时间  |
+
+file_image 表
+
+| 字段名           | 类型           | 描述                               |
+| ---------------- | -------------- | ---------------------------------- |
+| `id`             | bigint(20)      | 图片的唯一标识符，主键，自动递增    |
+| `image_id`       | bigint(20)      | 图片的标识符，可以为空              |
+| `image_url`      | varchar(255)    | 图片的URL地址，不能为空            |
+| `create_time`    | datetime        | 图片创建时间，默认当前时间         |
+| `update_time`    | datetime        | 图片更新时间，自动更新为当前时间  |
+
+### 2.0 版本主要功能（1.0 升级版）
+将识别内容细分，由于每张图片中可能包含多个产品信息，所以将识别内容细分为多个对象，对象单位是产品信息，搜索也是按照识别到的产品信息进行模糊搜索。
 
 ### 2.0 版本库表设计
 
@@ -61,19 +84,3 @@ jdk 1.8 + mybatis-plus 3.5.6
 | `contact_person` | varchar(100)    | 联系人                 |
 | `phone`          | varchar(20)     | 电话                   |
 | `purchase_time`  | varchar(100)    | 采购时间（精确到年月） |
-
-#### SQL 创建语句
-
-```sql
-CREATE TABLE `product_info` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `file_id` bigint(20) NOT NULL,
-  `product_name` varchar(255) DEFAULT NULL,
-  `model` varchar(100) DEFAULT NULL,
-  `unit_price` varchar(50) DEFAULT NULL,
-  `manufacturer` varchar(255) DEFAULT NULL,
-  `contact_person` varchar(100) DEFAULT NULL,
-  `phone` varchar(20) DEFAULT NULL,
-  `purchase_time` varchar(100) DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
