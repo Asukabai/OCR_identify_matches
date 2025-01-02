@@ -13,10 +13,6 @@
 
 ### 引入 Git
 
-# 项目初始化
-
-### 引入 Git
-
 ```git init && ```
 ```git add README.md  ```
 ```git commit -m "first commit" ```
