@@ -89,7 +89,7 @@ public class PriceFileController {
 
 
     /**
-     * 功能： 上传文件（支持一次性单个，多个文件 或 整个文件夹上传）
+     * 2.0 功能： 上传并解析文件（支持一次性单个，多个文件 或 整个文件夹上传）
      * URL：   /ss/service/uploadFileOperation
      * 逻辑步骤：
      1    验证文件类型：首先遍历所有文件，确保每个文件都是允许的类型（ PDF 或 图片 ）。
@@ -97,7 +97,7 @@ public class PriceFileController {
      3    处理 PDF 文件：将 PDF 文件转换为图片。
      4    压缩图片：如果图片大小超过 1MB，则进行压缩。
      5    转换为 Base64：将图片转换为 Base64 字符串。
-     6    调用 OCR 接口：将 Base64 字符串发送到 OCR 接口进行解析。
+     6    调用 baidu-OCR 接口：将 Base64 字符串发送到 OCR 接口进行解析。(分别调用两种 SDK,文本类型和表格类型，抛弃掉原来的 UMI-OCR 接口)
      7    存储解析结果：将解析结果存储到数据库中，并处理解析失败的情况。
      8    存储 Base64 字符串/图片文件到对应的文件夹中。
      9   记录文件信息：将文件信息存储到数据库中，并返回给前端。
@@ -457,10 +457,9 @@ public class PriceFileController {
                 productInfo.setUnitPrice(price);
                 // 其他字段可以根据需要设置
                 productInfoMapper.insert(productInfo);
+                System.out.println("存储成功");
             }
-
         }
-
     }
 
     // 定义一个方法来清理字符串
