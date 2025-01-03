@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 /**
  *  百度OCR——图片文本文字识别测试（使用数据库配置实现参数外置化）
  *
- * http://localhost:20122/ss/baidu/word
+ * http://localhost:20122/ss/baidu/picWord
  */
 public class BaiduWordIdentify {
     @Resource
@@ -56,6 +56,7 @@ public class BaiduWordIdentify {
 
         // D:\\ssproject\\ssprice\\采购合同\\pic_1\\test\\24-67气缸+接头采购合同双章1891元.jpg  识别之后的文字版结果
         String result = "{\"words_result\":[{\"words\":\"AUTOMATION\"},{\"words\":\"购销合同\"},{\"words\":\"供方：乐清市埃立客气动科技有限公司\"},{\"words\":\"合同编号：ALC0020240711001\"},{\"words\":\"需方:_陕西晟思智能测控有限公司\"},{\"words\":\"签订时间：2024.07.11\"},{\"words\":\"供需双方通过平等协商，本着诚实守信、互惠互利、双方自愿的原则达成一致意见，\"},{\"words\":\"同意签订本合同，具体条款如下：\"},{\"words\":\"一、货物名称/规格/数量/价格/供货周期\"},{\"words\":\"序号\"},{\"words\":\"名称\"},{\"words\":\"规格参数\"},{\"words\":\"单价\"},{\"words\":\"单位\"},{\"words\":\"数量\"},{\"words\":\"(元)\"},{\"words\":\"金额（元）\"},{\"words\":\"备注\"},{\"words\":\"1\"},{\"words\":\"气缸\"},{\"words\":\"MHF2-16D\"},{\"words\":\"个\"},{\"words\":\"5\"},{\"words\":\"212\"},{\"words\":\"1060\"},{\"words\":\"SMC\"},{\"words\":\"2\"},{\"words\":\"弯头接头\"},{\"words\":\"KQ2L06-M5A\"},{\"words\":\"个\"},{\"words\":\"10\"},{\"words\":\"2.89\"},{\"words\":\"28.9\"},{\"words\":\"SMC\"},{\"words\":\"3\"},{\"words\":\"直通调速接头\"},{\"words\":\"AS1002F-06A\"},{\"words\":\"个\"},{\"words\":\"10\"},{\"words\":\"10.85\"},{\"words\":\"108.5\"},{\"words\":\"SMC\"},{\"words\":\"4\"},{\"words\":\"电磁阀\"},{\"words\":\"SY3220-5LZ-C6\"},{\"words\":\"个\"},{\"words\":\"5\"},{\"words\":\"130\"},{\"words\":\"650\"},{\"words\":\"SMC\"},{\"words\":\"5\"},{\"words\":\"汇流板\"},{\"words\":\"SS5Y3-20-05\"},{\"words\":\"个\"},{\"words\":\"31.6\"},{\"words\":\"31.6\"},{\"words\":\"SMC\"},{\"words\":\"6\"},{\"words\":\"消声器\"},{\"words\":\"AN10-01\"},{\"words\":\"个\"},{\"words\":\"2\"},{\"words\":\"4.75\"},{\"words\":\"9.5\"},{\"words\":\"SMC\"},{\"words\":\"7\"},{\"words\":\"螺纹直接接头\"},{\"words\":\"KQ2H08-01AS\"},{\"words\":\"个\"},{\"words\":\"1\"},{\"words\":\"2.92\"},{\"words\":\"2.92\"},{\"words\":\"SMC\"},{\"words\":\"备注\"},{\"words\":\"总金额\"},{\"words\":\"1891\"},{\"words\":\"合计人民币大写（√13%增值税；□3%增值税；口不含税）：壹仟捌佰玖拾壹元整\"},{\"words\":\"二、货款支付方式：√款到1-3天左右发货；需增值税发票的对公转帐后开增值税发票。\"},{\"words\":\"三、交货地点、方式：\"},{\"words\":\"口物流运输：供方承担费用至\"},{\"words\":\"后由需方自提，自提产生费用由需方自理。\"},{\"words\":\"□到港：供方承担到港前的运输费用和保险费用及其他所有费用，到港前运输过程中的一切损坏、\"},{\"words\":\"错发、漏发等风险均由供方负责。\"},{\"words\":\"√快递送货上门：供方承担运输费用和保险费用及其他所有费用，运输过程中的一切损坏、错发、\"},{\"words\":\"漏发等风险均由供方负责。\"},{\"words\":\"四、验收时间及提出异议期限：货到后7日内根据合同约定和国家现行标准、行业标准验收，如有\"},{\"words\":\"质量问题或供方错发等由供方免费更换，到货7日后视为验收合格。\"},{\"words\":\"五、合同解决争议的办法：双方友好协商解决，若协商不成，可向供方所在地人民法院起诉。\"},{\"words\":\"六、本合同一式两份，供、需双方各执一份，具有同等法律效力\"},{\"words\":\"供方（盖章）：乐清市埃立客气动科技有限公司\"},{\"words\":\"代表（签字）：小陆\"},{\"words\":\"需方（盖章）：陕西晟思智能测控有限公司\"},{\"words\":\"代表（签字）\"},{\"words\":\"联系电话：15057322501（微信同号）\"},{\"words\":\"联系电话：\"},{\"words\":\"日期：2024年07月11日\"},{\"words\":\"日期：2024年07月11日\"},{\"words\":\"帐号及汇款资料\"},{\"words\":\"名称：乐清市埃立客气动科技有限公司\"},{\"words\":\"银行:中国建设银行股份有限公司乐清新虹支行\"},{\"words\":\"税号：91330382MA2CT81242\"},{\"words\":\"帐号：33050162756500000536\"},{\"words\":\"第1页，共1页\"}],\"words_result_num\":103,\"log_id\":\"1875010279962929591\"}" ;// 使用 Gson 解析 JSON 字符串
+        // 使用 Gson 解析 JSON 字符串
         Gson gson = new Gson();
         JsonObject jsonObject = gson.fromJson(result, JsonObject.class);
         JsonArray wordsResult = jsonObject.getAsJsonArray("words_result");
@@ -63,40 +64,110 @@ public class BaiduWordIdentify {
         // 创建一个 Map 来存储结果
         Map<String, String> extractedInfo = new HashMap<>();
 
-        // 遍历 words_result 数组
-        // 1、清理字符串：在遍历 words_result 数组时，先使用 cleanString 方法清理每个 word。
-        // 2、匹配逻辑：在匹配时，使用清理后的 cleanedWord 与清理后的别名进行比较。
+        // 默认值
+        String defaultManufacturer = "未找到厂家";
+        String defaultPhone = "未找到电话";
+        String defaultContact = "未找到联系人";
+        String defaultPurchaseTime = "未找到采购时间";
+
+        // 检查 manufacturerAliases
+        boolean manufacturerFound = false;
         for (int i = 0; i < wordsResult.size(); i++) {
             JsonObject wordObj = wordsResult.get(i).getAsJsonObject();
             String word = wordObj.get("words").getAsString();
+            System.out.println("清理前的 word: " + word);
 
             // 清理 word 字符串
             String cleanedWord = cleanString(word);
+            System.out.println("清理后的 word: " + cleanedWord);
 
             // 检查是否匹配 manufacturerAliases
             if (manufacturerAliases.stream().anyMatch(alias -> cleanedWord.contains(cleanString(alias)))) {
                 extractedInfo.put("厂家", word);
+                manufacturerFound = true;
                 break; // 找到匹配项后停止遍历
             }
+        }
+
+        // 如果没有找到厂家，则使用默认值
+        if (!manufacturerFound) {
+            extractedInfo.put("厂家", defaultManufacturer);
+        }
+
+        // 检查 phoneAliases
+        boolean phoneFound = false;
+        for (int i = 0; i < wordsResult.size(); i++) {
+            JsonObject wordObj = wordsResult.get(i).getAsJsonObject();
+            String word = wordObj.get("words").getAsString();
+            System.out.println("清理前的 word: " + word);
+
+            // 清理 word 字符串
+            String cleanedWord = cleanString(word);
+            System.out.println("清理后的 word: " + cleanedWord);
 
             // 检查是否匹配 phoneAliases
             if (phoneAliases.stream().anyMatch(alias -> cleanedWord.contains(cleanString(alias)))) {
                 extractedInfo.put("电话", word);
+                phoneFound = true;
                 break; // 找到匹配项后停止遍历
             }
+        }
+
+        // 如果没有找到电话，则使用默认值
+        if (!phoneFound) {
+            extractedInfo.put("电话", defaultPhone);
+        }
+
+        // 检查 contactAliases
+        boolean contactFound = false;
+        for (int i = 0; i < wordsResult.size(); i++) {
+            JsonObject wordObj = wordsResult.get(i).getAsJsonObject();
+            String word = wordObj.get("words").getAsString();
+            System.out.println("清理前的 word: " + word);
+
+            // 清理 word 字符串
+            String cleanedWord = cleanString(word);
+            System.out.println("清理后的 word: " + cleanedWord);
 
             // 检查是否匹配 contactAliases
             if (contactAliases.stream().anyMatch(alias -> cleanedWord.contains(cleanString(alias)))) {
                 extractedInfo.put("联系人", word);
+                contactFound = true;
                 break; // 找到匹配项后停止遍历
             }
+        }
+
+        // 如果没有找到联系人，则使用默认值
+        if (!contactFound) {
+            extractedInfo.put("联系人", defaultContact);
+        }
+
+        // 检查 purchaseTimeAliases
+        boolean purchaseTimeFound = false;
+        for (int i = 0; i < wordsResult.size(); i++) {
+            JsonObject wordObj = wordsResult.get(i).getAsJsonObject();
+            String word = wordObj.get("words").getAsString();
+            System.out.println("清理前的 word: " + word);
+
+            // 清理 word 字符串
+            String cleanedWord = cleanString(word);
+            System.out.println("清理后的 word: " + cleanedWord);
 
             // 检查是否匹配 purchaseTimeAliases
             if (purchaseTimeAliases.stream().anyMatch(alias -> cleanedWord.contains(cleanString(alias)))) {
                 extractedInfo.put("采购时间", word);
+                purchaseTimeFound = true;
                 break; // 找到匹配项后停止遍历
             }
         }
+
+        // 如果没有找到采购时间，则使用默认值
+        if (!purchaseTimeFound) {
+            extractedInfo.put("采购时间", defaultPurchaseTime);
+        }
+
+        // 打印提取的信息
+        System.out.println("提取的信息: " + extractedInfo);
         return new RespondDto(0, "success", null);
     }
 
