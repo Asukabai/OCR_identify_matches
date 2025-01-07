@@ -20,7 +20,7 @@ public class FileInfoResponse {
 
     public FileInfoResponse(FileInfo fileInfo, List<FileImage> fileImages) {
         this.fileName = fileInfo.getFileName();
-        this.content = fileInfo.getContent();
+        this.content = fileInfo.getWordContent();
         this.createTime = fileInfo.getCreateTime();
         this.imageUrls = new ArrayList<>();
         for (FileImage fileImage : fileImages) {

@@ -22,7 +22,8 @@ public class FileInfo {
     private Long id;
 
     private String fileName;
-    private String content;
+    private String wordContent;
+    private String tableContent;
     private Long imageId;
     private Date createTime;
     private Date updateTime;

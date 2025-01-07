@@ -1,9 +1,11 @@
 package com.ss.price.controller;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.ss.price.config.FileProperties;
 import com.ss.price.entity.*;
+import com.ss.price.entity.dto.OcrResult;
 import com.ss.price.entity.dto.RespondDto;
 import com.ss.price.mapper.*;
 import com.ss.price.utils.*;
@@ -38,6 +40,11 @@ import javax.imageio.stream.ImageOutputStream;
 @Slf4j
 public class PriceFileController {
     private static final AtomicInteger counter = new AtomicInteger(0);
+    @Resource
+    FileImageMapper fileImageMapper;
+    @Resource
+    FileInfoMapper fileInfoMapper;
+
     @Resource
     private FileProperties fileProperties;
     @Resource
@@ -122,7 +129,7 @@ public class PriceFileController {
             // 获取文件的基本名称（不包括扩展名）
             String baseName = FilenameUtils.getBaseName(originalFileName).toLowerCase();
             boolean fileExists = false;
-            if (originalFileName.toLowerCase().endsWith(".pdf")) {
+            if (originalFileName.toLowerCase().endsWith(".pdf")|| originalFileName.toUpperCase().endsWith(".PDF")) {
                 // 检查是否存在同名的子文件夹
                 if (subDirNames.contains(baseName)) {
                     log.warn("文件夹 " + baseName + " 已存在于目标文件夹中，跳过解析上传步骤 。");
@@ -136,7 +143,7 @@ public class PriceFileController {
                     fileExists = true;}}
             if (fileExists) {continue;}
             try {
-                if (originalFileName.toLowerCase().endsWith(".pdf")) {
+                if (originalFileName.toLowerCase().endsWith(".pdf")|| originalFileName.toUpperCase().endsWith(".PDF")) {
                     // 处理各种类型的PDF类型文件
                     processPdfFile(file, dir, fileUrls, failedFiles);
                 } else {
@@ -224,9 +231,9 @@ public class PriceFileController {
             File imageFile = new File(dir.getAbsolutePath() + File.separator + baseName + File.separator + imageFileName); // 创建一个 File 对象，表示要保存的图像文件。
             imageFile.getParentFile().mkdirs(); // 确保目标目录存在，如果不存在则创建。
             // 文件中的每一页 ，都调用 Baidu-OCR （分别要调用表格识别 和 文本识别两个接口）获取结果并保存到数据库中。
-            boolean OCR_result = sendToOcrAndStoreResult(imageBytes, imageFileName);
+            OcrResult ocrResult = sendToOcrAndStoreResult(imageBytes, imageFileName);
             // 如果 OCR 成功，则将图像数据写入文件
-            if (OCR_result) {
+            if (ocrResult.isSuccess()) {
                 try (FileOutputStream fos = new FileOutputStream(imageFile)) { // FileOutputStream：将图像数据写入文件。
                     fos.write(imageBytes);
                 }
@@ -235,6 +242,14 @@ public class PriceFileController {
             } else {
                 failedFiles.add(imageFileName);
             }
+            // 存储合并后的 OCR 结果到数据库中
+            if (ocrResult.getWordResult() != null && !ocrResult.getWordResult().isEmpty() &&
+                    ocrResult.getTableResult() != null && !ocrResult.getTableResult().isEmpty()) {
+                // 方法 storeOcrResult 存储 OCR 结果到数据库
+                storeOcrResult(imageFileName, ocrResult.getWordResult() , ocrResult.getTableResult(), fileUrls);
+            } else {
+                failedFiles.add(originalFileName);
+            }
         }
         document.close(); // 关闭 PDDocument 对象，释放资源
     }
@@ -242,34 +257,151 @@ public class PriceFileController {
 
 
 
+
     /**
      * 一个文件需要调用 两次 Baidu-OCR （分别要调用表格识别 和 文本识别两个接口） 并获取结果保存到数据库中
+     *
+     * 增加一个逻辑，存储 OCR 结果到数据库中，第一次 调用表格识别和文本识别，第二次则从数据库中获取，这样可以节约SDK接口的调用次数
      *
      * @param imageBytes
      * @param fileName
      */
-    private boolean sendToOcrAndStoreResult(byte[] imageBytes, String fileName ) {
+    private OcrResult sendToOcrAndStoreResult(byte[] imageBytes, String fileName) {
         System.out.println(fileName + " 进入到 sendToOcrAndStoreResult 方法");
-        System.out.println("第一步：调用文本识别");
-        // 通用文字识别（高精度版）- 请求url
-        String accurate_basic_url = "https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic";
-        // 发送请求
-        String accurateResult = OCR_SDK(imageBytes, accurate_basic_url , fileName);
-        // 解析文本识别结果 并保存到数据库中
-        // {"words_result":[{"words":"钣金件委托加工合同"},{"words":"需方（甲方）：陕西晟思智能测控有限公司"},{"words":"合同编码："},{"words":"SS-RD2023-04-P-240123-01"},{"words":"签订地点："},{"words":"西安"},{"words":"供方（乙方）：深圳市福晋五金制品有限公司"},{"words":"签订时间："},{"words":"2024-01-23"},{"words":"采购产品明细表"},{"words":"序号"},{"words":"产品名称"},{"words":"材质"},{"words":"单位"},{"words":"数量"},{"words":"单价"},{"words":"金额"},{"words":"货期"},{"words":"备注"},{"words":"(天)"},{"words":"1"},{"words":"钣金外壳（带丝印）"},{"words":"Q235"},{"words":"件"},{"words":"1"},{"words":"1850.00"},{"words":"1850.00"},{"words":"7天"},{"words":"开具13%增值税专用发票"},{"words":"合计"},{"words":"1850.00"},{"words":"合计人民币金额（大写）"},{"words":"壹仟捌佰伍拾元整"},{"words":"(1)质量要求、技术标准、供方对质量负责的条件及期限：按厂家样本提供的技术规范和要求"},{"words":"(2)交货地点；需方公司，供方代办运输"},{"words":"(3)运输费用承担：由供方承担，因货物延期造成的损失由供方承担"},{"words":"(4)验收标准：按原厂统一标准验收"},{"words":"(5)包装标准：原厂厂原包装"},{"words":"(6)结算方式及期限：需方全款到账后生产发货"},{"words":"(7)质量条款：产品质保期一年，质保期内产品如有质量问题，由厂家给更换原装产品。"},{"words":"(8)解决合同纠纷的方式：需供双方根据中华人民共和国相关规定，签订本协议并共同遵守，发生争议"},{"words":"在需方所在地仲裁机构解决"},{"words":"(9)合同货物明细中所号均经双方"},{"words":"供方不承担因型号误差造成的经济损失"},{"words":"(10)风险：运输过程中货物丢失成破损的风险由供方承担，货物签收后的丢失或破损风险由需方承担"},{"words":"(11)本合同一式两份，需供双方各执一份，经双方签字盖章生效。传真件与扫描件同样生效"},{"words":"需方签字盖章专用章"},{"words":"供方签字盖章"},{"words":"公司名称：陕西晟思智能测有限公司"},{"words":"公司名称：深圳市福晋五金品有限公司"},{"words":"公司地址：陕西省成新区沣东新城能源金贸区起"},{"words":"公司地址：深圳市龙岗区岗街道南联社区水口村"},{"words":"区期西金巷4-B1楼2层206室"},{"words":"工业区第18栋101"},{"words":"电话：029-85820586718709256158"},{"words":"电话：18320832079"},{"words":"传真：029-85820585"},{"words":"传真："},{"words":"代表人：张宁"},{"words":"代表人"},{"words":"开户银行：中国银行西安塔路支行"},{"words":"开户银行：中国建设银行深圳华南城支行"},{"words":"账号：103254232169"},{"words":"账号：44250100018800001151"}],"words_result_num":64,"log_id":1876097816795899770}
-        Map<String, String> extractedInfo = parseBaiDuWordOcrResult(accurateResult);
-        System.out.println("文本识别结束");
-        //  顺序执行表格识别
-        System.out.println("第二步：调用表格识别");
-        // 表格文字识别V2 - 调用百度表格OCR_请求url
-        String table_url = "https://aip.baidubce.com/rest/2.0/ocr/v1/table";
-        // 发送请求
-        String tableUrl = OCR_SDK(imageBytes, table_url , fileName);
-        // 解析表格识别结果 并保存到数据库中
-        List<Map<String, String>> tableResult =parseBaiDuTableOcrResult(tableUrl);
-        System.out.println("表格识别结束,开始将识别结果保存到数据库 ！");
-        return saveDataToDatabase(extractedInfo, tableResult, fileName);
+        // 首先从数据库中查询 OCR 结果
+        QueryWrapper<FileInfo> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("file_name", fileName);
+        FileInfo fileInfo = fileInfoMapper.selectOne(queryWrapper);
+        String wordResult = null;
+        String tableResult = null;
+        boolean saveDataToDatabase = false;
+        if (fileInfo != null) {
+            // 如果数据库中存在 OCR 结果，则直接使用这些结果
+            wordResult = fileInfo.getWordContent();
+            tableResult = fileInfo.getTableContent();
+            System.out.println("从数据库中获取 OCR 结果");
+            return new OcrResult(true, wordResult, tableResult);
+        } else {
+            System.out.println("数据库中不存在 OCR 结果，调用 Baidu-OCR 接口进行识别");
+            System.out.println("第一步：调用文本识别");
+            // 通用文字识别（高精度版）- 请求url
+            String accurate_basic_url = "https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic";
+            // 发送请求
+            wordResult = OCR_SDK(imageBytes, accurate_basic_url, fileName);
+            // 解析文本识别结果 并保存到数据库中
+            Map<String, String> extractedInfo = parseBaiDuWordOcrResult(wordResult);
+            System.out.println("文本识别结束");
+
+            // 顺序执行表格识别
+            System.out.println("第二步：调用表格识别");
+            // 表格文字识别V2 - 调用百度表格OCR_请求url
+            String table_url = "https://aip.baidubce.com/rest/2.0/ocr/v1/table";
+            // 发送请求
+            tableResult = OCR_SDK(imageBytes, table_url, fileName);
+            // 解析表格识别结果 并保存到数据库中
+            List<Map<String, String>> tableResults = parseBaiDuTableOcrResult(tableResult);
+            System.out.println("表格识别结束,开始将识别结果保存到数据库 ！");
+            saveDataToDatabase = saveDataToDatabase(extractedInfo, tableResults, fileName);
+            return new OcrResult(saveDataToDatabase, wordResult, tableResult);
+        }
     }
+
+    public void storeOcrResult(String fileName, String wordResult,String tableResult,List<String> fileUrls) {
+        try {
+            log.info("Storing OCR result for file: {}", fileName);
+            // 生成唯一的六位数 imageId
+            Long imageId = generateUniqueSixDigitId();
+            // 创建 FileInfo 对象 将OCR识别的两个结果保存到数据库中
+            FileInfo fileInfo = new FileInfo();
+            fileInfo.setFileName(fileName);
+            fileInfo.setWordContent(wordResult);
+            fileInfo.setTableContent(tableResult);
+            fileInfo.setImageId(imageId);
+            fileInfo.setCreateTime(new Date());
+            fileInfo.setUpdateTime(new Date());
+            // 插入 FileInfo 记录并获取自增主键
+            fileInfoMapper.insert(fileInfo);
+            // 检查自增主键是否正确设置
+            if (fileInfo.getId() == null) {
+                throw new RuntimeException("Failed to insert FileInfo record, ID is null.");
+            }
+            log.info("Inserted FileInfo with ID: " + fileInfo.getId());
+
+            // 过滤出属于当前 fileName 的文件路径
+            List<String> filteredFileUrls = new ArrayList<>();
+            for (String fileUrl : fileUrls) {
+                String urlFileName = new File(fileUrl).getName();
+                if (urlFileName.startsWith(FilenameUtils.getBaseName(fileName))) {
+                    filteredFileUrls.add(fileUrl);
+                }
+            }
+            // 创建 FileImage 对象列表并逐个插入
+            for (String fileUrl : filteredFileUrls) {
+                FileImage fileImage = new FileImage();
+                fileImage.setImageId(imageId);
+                fileImage.setImageUrl(fileUrl);
+                fileImage.setCreateTime(new Date());
+                fileImage.setUpdateTime(new Date());
+                log.info("Inserting FileImage with imageId: " + fileImage.getImageId() + " and imageUrl: " + fileImage.getImageUrl());
+                // 插入 FileImage 记录
+                fileImageMapper.insert(fileImage);
+            }
+            // 如果所有图片插入成功，不需要额外操作
+        } catch (Exception e) {
+            log.error("Error storing OCR result for file: " + fileName + ", Exception: " + e.getMessage(), e);
+            // 查询 file_info 表中是否还有相关记录
+            QueryWrapper<FileInfo> fileInfoQueryWrapper = new QueryWrapper<>();
+            fileInfoQueryWrapper.eq("file_name", fileName);
+            FileInfo fileInfo = fileInfoMapper.selectOne(fileInfoQueryWrapper);
+            if (fileInfo != null) {
+                // 如果查询到 FileInfo 记录，继续查询 file_image 表
+                QueryWrapper<FileImage> fileImageQueryWrapper = new QueryWrapper<>();
+                fileImageQueryWrapper.eq("image_id", fileInfo.getImageId());
+                List<FileImage> fileImages = fileImageMapper.selectList(fileImageQueryWrapper);
+                // 删除 file_image 表中的记录
+                if (!fileImages.isEmpty()) {
+                    fileImageMapper.delete(fileImageQueryWrapper);
+                }
+                // 删除 file_info 表中的记录
+                fileInfoMapper.delete(fileInfoQueryWrapper);
+            }
+            // 删除与该文件相关的上传文件夹
+            deleteUploadFolder(fileName);
+            throw new RuntimeException("Failed to store OCR result for file: " + fileName, e);
+        }
+    }
+
+    private void deleteUploadFolder(String fileName) {
+        // 构建文件夹路径
+        File uploadDir = new File(fileProperties.getSavePath(), fileName);
+        if (uploadDir.exists() && uploadDir.isDirectory()) {
+            // 删除文件夹及其内容
+            deleteDirectory(uploadDir);
+        }
+    }
+
+    private void deleteDirectory(File directory) {
+        File[] files = directory.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    deleteDirectory(file);
+                } else {
+                    file.delete();
+                }
+            }
+        }
+        directory.delete();
+    }
+
+    private Long generateUniqueSixDigitId() {
+        long currentTimeMillis = System.currentTimeMillis();
+        int randomValue = counter.getAndIncrement() % 1000; // 生成一个三位数的随机值
+        long base = (currentTimeMillis / 1000) % 1000; // 获取秒级时间戳的最后三位数
+        return base * 1000L + randomValue; // 组合成一个六位数
+    }
+
+
 
     private boolean saveDataToDatabase(Map<String, String> extractedInfo, List<Map<String, String>> tableResult, String fileName) {
         // 使用 Gson 将 extractedInfo 和 tableResult 转换为 JSON 字符串
@@ -282,8 +414,7 @@ public class PriceFileController {
         System.out.println("tableResult: " + tableResultJson);
         // 合并 extractedInfo 到 tableResult 的每个条目中
         for (Map<String, String> rowContent : tableResult) {
-            rowContent.putAll(extractedInfo);
-        }
+            rowContent.putAll(extractedInfo);}
         // 存储合并后的结果到数据库
         for (Map<String, String> rowContent : tableResult) {
             String name = rowContent.getOrDefault("名称", "");
@@ -294,13 +425,13 @@ public class PriceFileController {
             String contact = rowContent.getOrDefault("联系人", "");
             String purchaseTime = rowContent.getOrDefault("采购时间", "");
             if (name.isEmpty() || spec.isEmpty() || price.isEmpty()) {
-                continue;
-            }
+                continue;}
             System.out.println("名称=" + name + ", 规格参数=" + spec + ", 价格参数=" + price +
                     ", 厂家=" + manufacturer + ", 电话=" + phone + ", 联系人=" + contact + ", 采购时间=" + purchaseTime);
             // 创建 ProductInfo 对象并保存到数据库
             ProductInfo productInfo = new ProductInfo();
             productInfo.setProductName(name);
+            productInfo.setFileName(fileName);
             productInfo.setModel(spec);
             productInfo.setUnitPrice(price);
             productInfo.setManufacturer(manufacturer);
@@ -343,12 +474,12 @@ public class PriceFileController {
         System.out.println("specAliases = " + specAliases);
         List<String> priceAliases = configItemsMap.getOrDefault("单价", Collections.emptyList()).stream().map(ConfigItems::getAlias).collect(Collectors.toList());
         System.out.println("priceAliases = " + priceAliases);
-        // 使用 Gson 解析 JSON 字符串
         Gson gson = new Gson();
         JsonObject jsonObject = gson.fromJson(result, JsonObject.class);
         JsonArray tablesResult = jsonObject.getAsJsonArray("tables_result");
         JsonObject firstTable = tablesResult.get(0).getAsJsonObject();
         JsonArray body = firstTable.getAsJsonArray("body");
+
         // 获取表头信息
         JsonArray headerCells = new JsonArray();
         int firstRowColumnCount = 0;
@@ -363,17 +494,31 @@ public class PriceFileController {
             }
         }
         System.out.println("表头列数: " + firstRowColumnCount);
-        // 创建一个 Map 来存储列名和列索引的映射
+
+// 创建一个 Map 来存储列名和列索引的映射
         Map<String, Integer> headerIndexMap = new HashMap<>();
-        // 遍历表头，找到“名称”和“规格参数”这两列的列索引
+// 遍历表头，在将单元格内容放入 resultMap 时，使用 String.valueOf(colStart) 作为键，而不是 String.valueOf(i)。
+//这样可以确保 resultMap 中的列索引与实际的列位置一致。// 这样是不行的
+//         遍历表头，找到“名称”和“规格参数”这两列的列索引
+//        for (int i = 0; i < headerCells.size(); i++) {
+//            JsonObject cell = headerCells.get(i).getAsJsonObject();
+//            String words = cell.get("words").getAsString();
+//            headerIndexMap.put(words, i);
+//        }
         for (int i = 0; i < headerCells.size(); i++) {
             JsonObject cell = headerCells.get(i).getAsJsonObject();
-            String words = cell.get("words").getAsString();
-            headerIndexMap.put(words, i);
+            String words = cell.get("words").getAsString().trim();
+            int colStart = cell.get("col_start").getAsInt();
+            if (!words.isEmpty()) { // 忽略空字符串
+                headerIndexMap.put(words, colStart);
+            }
         }
-        // 输出表头信息
+
+// 输出表头信息
         System.out.println("表头信息: " + headerCells);
-        // 获取“名称”和“规格参数”这两列的列索引
+        System.out.println("headerIndexMap: " + headerIndexMap);
+
+// 获取“名称”和“规格参数”这两列的列索引
         int nameColumnIndex = -1;
         for (String alias : nameAliases) {
             System.out.println("名称列表中都含有 : " + alias);
@@ -396,13 +541,18 @@ public class PriceFileController {
         if (specColumnIndex == -1) {
             throw new IllegalArgumentException("没有找到匹配的规格参数列");
         }
+
         int priceColumnIndex = -1;
+
         for (String alias : priceAliases) {
             String cleanedAlias = cleanString(alias);
+            System.out.println("Cleaning alias: " + alias + " -> " + cleanedAlias);
             for (Map.Entry<String, Integer> entry : headerIndexMap.entrySet()) {
                 String cleanedHeader = cleanString(entry.getKey());
+                System.out.println("Cleaning header: " + entry.getKey() + " -> " + cleanedHeader);
                 if (cleanedHeader.equals(cleanedAlias)) {
                     priceColumnIndex = entry.getValue();
+                    System.out.println("Match found: " + cleanedAlias + " -> " + priceColumnIndex);
                     break;
                 }
             }
@@ -410,14 +560,16 @@ public class PriceFileController {
         if (priceColumnIndex == -1) {
             throw new IllegalArgumentException("没有找到匹配的价格参数列");
         }
-        // 输出表头信息
+
+// 输出表头信息
         System.out.println("**********************************************************************");
         System.out.println("名称列索引: " + nameColumnIndex);
         System.out.println("规格参数列索引: " + specColumnIndex);
         System.out.println("价格参数列索引: " + priceColumnIndex);
-        // 创建一个 List 来存储结果
-        List<Map<String, String>> resultList = new ArrayList<>();
-        // 遍历 body 中的每一行，从第二行开始
+
+// 创建一个 Map 来存储结果
+        Map<Integer, Map<String, String>> resultMap = new HashMap<>();
+// 遍历 body 中的每一行，从第二行开始
         for (int i = 0; i < body.size(); i++) {
             JsonObject row = body.get(i).getAsJsonObject();
             int rowStart = row.get("row_start").getAsInt();
@@ -427,23 +579,36 @@ public class PriceFileController {
             int colStart = row.get("col_start").getAsInt();
             String words = row.get("words").getAsString();
             // 将当前行的单元格内容放入 resultMap 中
-            Map<String, String> rowContent = new HashMap<>();
-            rowContent.put(String.valueOf(colStart), words);
-            // 根据列索引获取“名称”和“规格参数”这两列的内容
-            String name = rowContent.getOrDefault(String.valueOf(nameColumnIndex), "");
+            resultMap.putIfAbsent(rowStart, new HashMap<>());
+            resultMap.get(rowStart).put(String.valueOf(colStart), words);
+        }
 
+// 打印 resultMap 以验证结果
+        for (Map.Entry<Integer, Map<String, String>> entry : resultMap.entrySet()) {
+            System.out.println("Row " + entry.getKey() + ": " + entry.getValue());
+        }
+
+// 根据列索引获取“名称”和“规格参数”这两列的内容
+        List<Map<String, String>> resultList = new ArrayList<>();
+        for (Map.Entry<Integer, Map<String, String>> entry : resultMap.entrySet()) {
+            Map<String, String> rowContent = entry.getValue();
+            String name = rowContent.getOrDefault(String.valueOf(nameColumnIndex), "");
             String spec = rowContent.getOrDefault(String.valueOf(specColumnIndex), "");
             String price = rowContent.getOrDefault(String.valueOf(priceColumnIndex), "");
-            if (!name.isEmpty() && !spec.isEmpty() && !price.isEmpty()) {
-                Map<String, String> productInfo = new HashMap<>();
-                productInfo.put("名称", name);
-                productInfo.put("规格参数", spec);
-                productInfo.put("价格参数", price);
-                resultList.add(productInfo);
+            if (name.isEmpty() || spec.isEmpty() || price.isEmpty()) {
+                continue;
             }
+            Map<String, String> resultRow = new HashMap<>();
+            resultRow.put("名称", name);
+            resultRow.put("规格参数", spec);
+            resultRow.put("价格参数", price);
+            resultList.add(resultRow);
         }
-        System.out.println("resultList = " + resultList);
-        return resultList; // 返回结果列表
+// 打印 resultList 以验证结果
+        for (Map<String, String> entry : resultList) {
+            System.out.println(entry);
+        }
+        return  resultList;
     }
 
 
@@ -621,8 +786,25 @@ public class PriceFileController {
             fileBytes = compressImage(fileBytes, newFileName);
         }
         // 调用 OCR 解析获取结果，并存储到数据库中
-        sendToOcrAndStoreResult(fileBytes, newFileName);
+        OcrResult ocrResult = sendToOcrAndStoreResult(fileBytes, newFileName);
+        // 如果 OCR 成功，则将图像数据写入文件
+        if (ocrResult.getWordResult() != null && !ocrResult.getWordResult().isEmpty() &&
+                ocrResult.getTableResult() != null && !ocrResult.getTableResult().isEmpty()  && ocrResult.isSuccess() ) {
 
+            // 保存到服务器本地
+            File fileToSave = new File(dir.getAbsolutePath() + File.separator + newFileName);
+            try (FileOutputStream fos = new FileOutputStream(fileToSave)) {
+                fos.write(fileBytes);
+            }
+            String fileUrl = fileToSave.getAbsolutePath();
+            fileUrls.add(fileUrl); // 将文件路径添加到 fileUrls 列表中。
+
+            // 方法 storeOcrResult 存储 OCR 结果到数据库
+            storeOcrResult(newFileName, ocrResult.getWordResult() , ocrResult.getTableResult(), fileUrls);
+
+        } else {
+            failedFiles.add(newFileName);
+        }
     }
 
     /**
