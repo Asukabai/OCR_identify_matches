@@ -32,8 +32,7 @@
               v-for="(imageUrl, index) in scope.row.imageUrls.slice(0, 3)"
               :key="index"
               :src="'data:image/png;base64,' + imageUrl"
-              :preview-src-list="['data:image/png;base64,' + imageUrl]"
-              style="width: 40px; height: 40px; margin-right: 5px;"
+              :preview-src-list="['data:image/png;base64,' + imageUrl]"              style="width: 40px; height: 40px; margin-right: 5px;"
             />
             <el-button v-if="scope.row.imageUrls.length > 3" type="text" @click="showImages(scope.row.imageUrls)">查看更多</el-button>
           </div>
@@ -64,8 +63,7 @@
             v-for="(imageUrl, index) in form.imageUrls"
             :key="index"
             :src="'data:image/png;base64,' + imageUrl"
-            :preview-src-list="['data:image/png;base64,' + imageUrl]"
-            style="width: 100px; height: 100px; margin: 5px;"
+            :preview-src-list="['data:image/png;base64,' + imageUrl]"            style="width: 100px; height: 100px; margin: 5px;"
           />
         </el-descriptions-item>
         <el-descriptions-item label="上传时间">{{ new Date(form.createTime).toLocaleString() }}</el-descriptions-item>
@@ -85,22 +83,23 @@
         v-for="(imageUrl, index) in selectedImageUrls"
         :key="index"
         :src="'data:image/png;base64,' + imageUrl"
-        :preview-src-list="selectedImageUrls.map(url => 'data:image/png;base64,' + url)"
-        style="width: 100px; height: 100px; margin: 5px;"
+        :preview-src-list="selectedImageUrls.map(url => 'data:image/png;base64,' + url)"        style="width: 100px; height: 100px; margin: 5px;"
       />
       <span slot="footer" class="dialog-footer">
         <el-button @click="imageDialogVisible = false">关闭</el-button>
       </span>
     </el-dialog>
-    <footer class="footer">
-      <p>&copy; 2024 供应商产品管理系统 V1.0.1</p>
-    </footer>
+    <Footer />
   </div>
 </template>
 
-<script>
-import SensorFile from "../../utils/sensorFile"; // 引入 lodash 的 debounce 函数
+<script>import SensorFile from "../../utils/sensorFile"; // 引入 lodash 的 debounce 函数
+import Footer from "../../components/views/Footer.vue"; // 引入 Footer 组件
+
 export default {
+  components: {
+    Footer
+  },
   data() {
     return {
       searchQuery: '', // 查询输入框的值
