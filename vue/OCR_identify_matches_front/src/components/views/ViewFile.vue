@@ -1,6 +1,6 @@
 <template>
   <div class="card-storage-operations" v-loading="loading" element-loading-text="页面正在加载中..." element-loading-spinner="el-icon-loading" element-loading-background="rgba(255, 255, 255, 0.7)">
-    <el-header><h1 class="title">供应商产品管理系统</h1></el-header>
+    <el-header><h1 class="title">晟思文件录入识别系统</h1></el-header>
     <div style="height: 20px;"></div>
     <div class="button-container">
       <el-input v-model="searchQuery" placeholder="根据文件名或文件内容关键词" style="width: 300px;"></el-input>
@@ -14,36 +14,72 @@
           {{ scope.$index + 1 + (currentPage - 1) * pageSize }}
         </template>
       </el-table-column>
-      <el-table-column prop="fileName" label="文件名称" width="360" class-name="custom-file-name">
+<!--      <el-table-column prop="fileName" label="文件名称" width="360" class-name="custom-file-name">-->
+<!--        <template slot-scope="scope">-->
+<!--          <span>{{ scope.row.productInfo.fileName }}</span>-->
+<!--        </template>-->
+<!--      </el-table-column>-->
+      <el-table-column prop="productName" label="产品名称" width="180">
         <template slot-scope="scope">
-          <span>{{ scope.row.fileName }}</span>
+          <span>{{ scope.row.productInfo.productName }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="文件内容">
+      <el-table-column prop="model" label="材质" width="150">
         <template slot-scope="scope">
-          <span>{{ scope.row.content.substring(0, 50) + (scope.row.content.length > 50 ? '...' : '') }}</span>
-          <el-button type="text" @click="showContent(scope.row.content)">查看内容</el-button>
+          <span>{{ scope.row.productInfo.model }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="文件预览" width="260">
+      <el-table-column prop="unitPrice" label="单价(默认:元)" width="140">
+        <template slot-scope="scope">
+          <span>{{ scope.row.productInfo.unitPrice }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="manufacturer" label="制造商" width="400">
+        <template slot-scope="scope">
+          <span>{{ scope.row.productInfo.manufacturer }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="contactPerson" label="联系人" width="150">
+        <template slot-scope="scope">
+          <span>{{ scope.row.productInfo.contactPerson }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="phone" label="电话" width="280">
+        <template slot-scope="scope">
+          <span>{{ scope.row.productInfo.phone }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="purchaseTime" label="签订时间" width="260">
+        <template slot-scope="scope">
+          <span>{{ scope.row.productInfo.purchaseTime }}</span>
+        </template>
+      </el-table-column>
+<!--      <el-table-column label="文件内容">-->
+<!--        <template slot-scope="scope">-->
+<!--          <span>{{ scope.row.fileInfo.wordContent.substring(0, 50) + (scope.row.fileInfo.wordContent.length > 50 ? '...' : '') }}</span>-->
+<!--          <el-button type="text" @click="showContent(scope.row.fileInfo.wordContent)">查看内容</el-button>-->
+<!--        </template>-->
+<!--      </el-table-column>-->
+      <el-table-column label="文件预览" width="230">
         <template slot-scope="scope">
           <div v-if="scope.row.imageUrls && scope.row.imageUrls.length > 0">
             <el-image
               v-for="(imageUrl, index) in scope.row.imageUrls.slice(0, 3)"
               :key="index"
               :src="'data:image/png;base64,' + imageUrl"
-              :preview-src-list="['data:image/png;base64,' + imageUrl]"              style="width: 40px; height: 40px; margin-right: 5px;"
+              :preview-src-list="['data:image/png;base64,' + imageUrl]"
+              style="width: 40px; height: 40px; margin-right: 5px;"
             />
             <el-button v-if="scope.row.imageUrls.length > 3" type="text" @click="showImages(scope.row.imageUrls)">查看更多</el-button>
           </div>
           <span v-else>无预览</span>
         </template>
       </el-table-column>
-      <el-table-column prop="createTime" label="上传时间" width="180">
-        <template slot-scope="scope">
-          {{ new Date(scope.row.createTime).toLocaleString() }}
-        </template>
-      </el-table-column>
+<!--      <el-table-column prop="createTime" label="上传时间" width="180">-->
+<!--        <template slot-scope="scope">-->
+<!--          {{ new Date(scope.row.fileInfo.createTime).toLocaleString() }}-->
+<!--        </template>-->
+<!--      </el-table-column>-->
     </el-table>
     <el-pagination
       @size-change="handleSizeChange"
@@ -56,17 +92,25 @@
     ></el-pagination>
     <el-dialog title="资产详细信息" :visible.sync="detailsVisible">
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="文件名称">{{ form.fileName }}</el-descriptions-item>
-        <el-descriptions-item label="文件内容">{{ form.content }}</el-descriptions-item>
+        <el-descriptions-item label="文件名称">{{ form.productInfo.fileName }}</el-descriptions-item>
+        <el-descriptions-item label="产品名称">{{ form.productInfo.productName }}</el-descriptions-item>
+        <el-descriptions-item label="材质">{{ form.productInfo.model }}</el-descriptions-item>
+        <el-descriptions-item label="单价">{{ form.productInfo.unitPrice }}</el-descriptions-item>
+        <el-descriptions-item label="制造商">{{ form.productInfo.manufacturer }}</el-descriptions-item>
+        <el-descriptions-item label="联系人">{{ form.productInfo.contactPerson }}</el-descriptions-item>
+        <el-descriptions-item label="电话">{{ form.productInfo.phone }}</el-descriptions-item>
+        <el-descriptions-item label="签订时间">{{ form.productInfo.purchaseTime }}</el-descriptions-item>
+        <el-descriptions-item label="文件内容">{{ form.fileInfo.wordContent }}</el-descriptions-item>
         <el-descriptions-item label="文件预览">
           <el-image
             v-for="(imageUrl, index) in form.imageUrls"
             :key="index"
             :src="'data:image/png;base64,' + imageUrl"
-            :preview-src-list="['data:image/png;base64,' + imageUrl]"            style="width: 100px; height: 100px; margin: 5px;"
+            :preview-src-list="form.imageUrls.map(url => 'data:image/png;base64,' + url)"
+            style="width: 100px; height: 100px; margin: 5px;"
           />
         </el-descriptions-item>
-        <el-descriptions-item label="上传时间">{{ new Date(form.createTime).toLocaleString() }}</el-descriptions-item>
+        <el-descriptions-item label="上传时间">{{ new Date(form.fileInfo.createTime).toLocaleString() }}</el-descriptions-item>
       </el-descriptions>
       <div slot="footer" class="dialog-footer">
         <el-button @click="detailsVisible = false">关 闭</el-button>
@@ -83,7 +127,8 @@
         v-for="(imageUrl, index) in selectedImageUrls"
         :key="index"
         :src="'data:image/png;base64,' + imageUrl"
-        :preview-src-list="selectedImageUrls.map(url => 'data:image/png;base64,' + url)"        style="width: 100px; height: 100px; margin: 5px;"
+        :preview-src-list="selectedImageUrls.map(url => 'data:image/png;base64,' + url)"
+        style="width: 100px; height: 100px; margin: 5px;"
       />
       <span slot="footer" class="dialog-footer">
         <el-button @click="imageDialogVisible = false">关闭</el-button>
@@ -93,7 +138,8 @@
   </div>
 </template>
 
-<script>import SensorFile from "../../utils/sensorFile"; // 引入 lodash 的 debounce 函数
+<script>
+import SensorFile from "../../utils/sensorFile"; // 引入 lodash 的 debounce 函数
 import Footer from "../../components/views/Footer.vue"; // 引入 Footer 组件
 
 export default {
@@ -108,10 +154,28 @@ export default {
       dialogVisible: false,
       detailsVisible: false, // 查看详情对话框的显示状态
       form: {
-        fileName: '',
-        content: '',
-        imageUrls: [],
-        createTime: '',
+        productInfo: {
+          id: null,
+          fileName: '',
+          productName: '',
+          model: '',
+          unitPrice: '',
+          manufacturer: '',
+          contactPerson: '',
+          phone: '',
+          purchaseTime: ''
+        },
+        fileInfo: {
+          id: null,
+          fileName: '',
+          wordContent: '',
+          tableContent: '',
+          imageId: null,
+          createTime: '',
+          updateTime: '',
+          fileImages: null
+        },
+        imageUrls: []
       },
       isEdit: false,
       currentId: null,
@@ -223,10 +287,17 @@ export default {
       this.selectedImageUrls = imageUrls;
       this.imageDialogVisible = true;
     },
+    showDetails(row) {
+      this.form = {
+        productInfo: row.productInfo,
+        fileInfo: row.fileInfo,
+        imageUrls: row.imageUrls
+      };
+      this.detailsVisible = true;
+    }
   }
 };
 </script>
-
 
 <style scoped>
 .card-storage-operations {
@@ -264,10 +335,5 @@ input, select, textarea {
 /* 针对其他现代浏览器 */
 input, select, textarea {
   appearance: none; /* 标准语法 */
-}
-.footer {
-  margin-top: 20px;
-  font-size: 15px;
-  color: #666;
 }
 </style>
