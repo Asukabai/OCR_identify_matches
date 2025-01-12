@@ -1,31 +1,16 @@
-
-#spring:
-#  application:
-#    name: qr_code
-#  datasource: # mybatis-plus DataSource Config
-#    driver-class-name: com.mysql.cj.jdbc.Driver
-#    url: jdbc:mysql://localhost:3306/test?maxAllowedPacket=33554432
-#    username: root
-#    password: 123456
-#  servlet:
-#    multipart:
-#      max-file-size: 100MB
-#      max-request-size: 500MB
-
+#url: jdbc:mysql://localhost:3306/ss_price?maxAllowedPacket=33554432&characterEncoding=utf8mb4&useUnicode=true
 spring:
   application:
     name: qr_price
   datasource: # mybatis-plus DataSource Config
     driver-class-name: com.mysql.cj.jdbc.Driver
-    #url: jdbc:mysql://127.0.0.1:3306/test?maxAllowedPacket=33554432
-    url: jdbc:mysql://localhost:3306/ss_price?maxAllowedPacket=33554432
+    url: jdbc:mysql://localhost:3306/ss_price?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
     username: root
     password: 123456
   servlet:
     multipart:
       max-file-size: 100MB
       max-request-size: 500MB
-
 
 server:
   port: 20122
@@ -49,7 +34,6 @@ mybatis-plus:
       logic-delete-value: 1
       # 逻辑未删除值
       logic-not-delete-value: 0
-
 
 file:
   path:
