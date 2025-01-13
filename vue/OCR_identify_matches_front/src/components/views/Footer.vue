@@ -1,6 +1,6 @@
 <template>
   <footer class="footer">
-    <p>&copy; {{ currentYear }} 供应商产品管理系统 V1.0.1</p>
+    <p>&copy; {{ currentYear }} 晟思文件录入识别系统 V2.0.1</p>
   </footer>
 </template>
 
