@@ -75,55 +75,71 @@ public class ViewFileController {
 
     @RequestMapping(value = "/getQueryFileInfoWithImages", method = {RequestMethod.GET, RequestMethod.POST})
     public RespondDto<Page<FileInfoResponse>> getQueryFileInfoWithImages(@RequestBody RequestPack<RequestQuery> operation) {
-        System.out.println("进入分页查询方法");
+        // 打印进入方法的日志
+        log.info("进入分页查询方法");
+
+        // 创建分页对象
         Page<ProductInfo> productInfoPage = new Page<>(operation.getReqData().getPageNum(), operation.getReqData().getPageSize());
         QueryWrapper<ProductInfo> productInfoQueryWrapper = new QueryWrapper<>();
+
         // 获取查询字符串
         String query = operation.getReqData().getQuery();
-        // 打印查询字符串
         log.info("打印查询字符串：Search query: {}", query);
 
+        // 根据查询字符串构建查询条件
         if ("all".equalsIgnoreCase(query)) {
-            // 如果查询参数为 "all"，则不应用任何查询条件
             log.info("查询所有记录");
         } else {
-            // 否则，应用查询条件
-            productInfoQueryWrapper.like("product_name", query)
-                    .orderByDesc("id");
-            // 打印生成的 SQL 语句
+            productInfoQueryWrapper.like("product_name", query);
+//            productInfoQueryWrapper.like("product_name", query).orderByDesc("id");
             log.info("打印生成的 SQL 语句：Generated SQL: {}", productInfoQueryWrapper.getSqlSegment());
         }
 
-        Page<ProductInfo> productInfoPageResult = null;
+        // 执行分页查询
+        Page<ProductInfo> productInfoPageResult = new Page<>();
         try {
             productInfoPageResult = productInfoMapper.selectPage(productInfoPage, productInfoQueryWrapper);
-            // 打印查询结果
             log.info("查询结果数量: {}", productInfoPageResult.getRecords().size());
+            // 打印查询结果的具体内容
+            for (ProductInfo productInfo : productInfoPageResult.getRecords()) {
+                log.info("查询结果 - ProductInfo ID: {}, Product Name: {}", productInfo.getId(), productInfo.getProductName());
+            }
         } catch (Exception e) {
             log.error("查询出现异常: ", e);
             productInfoPageResult = new Page<>(); // 初始化一个空的 Page 对象
         }
-
+        // 检查查询结果是否为空
+        if (productInfoPageResult == null || productInfoPageResult.getRecords().isEmpty()) {
+            log.warn("查询结果为空");
+            return RespondUtils.success(new Page<>(), "查询成功，但无匹配数据！");
+        }
         // 将查询到的 ProductInfo 记录封装到 FileInfoResponse 对象中
         List<FileInfoResponse> fileInfoResponseList = new ArrayList<>();
         for (ProductInfo productInfo : productInfoPageResult.getRecords()) {
+            log.info("处理产品信息 ID: {}", productInfo.getId());
+            // 获取文件名
             String fileName = productInfo.getFileName();
-
+            log.info("文件名: {}", fileName);
             // 根据 fileName 查询关联的 FileInfo 记录
             QueryWrapper<FileInfo> fileInfoQueryWrapper = new QueryWrapper<>();
             fileInfoQueryWrapper.eq("file_name", fileName);
             FileInfo fileInfo = fileInfoMapper.selectOne(fileInfoQueryWrapper);
 
             if (fileInfo != null) {
+                log.info("找到关联的 FileInfo 记录: {}", fileInfo.getId());
+
                 // 根据 imageId 查询关联的 FileImage 记录
                 QueryWrapper<FileImage> fileImageQueryWrapper = new QueryWrapper<>();
                 fileImageQueryWrapper.eq("image_id", fileInfo.getImageId());
                 List<FileImage> fileImages = fileImageMapper.selectList(fileImageQueryWrapper);
+                log.info("找到关联的 FileImage 记录数量: {}", fileImages.size());
 
                 // 使用 CompletableFuture 异步处理图片转换
                 List<CompletableFuture<String>> futures = new ArrayList<>();
                 for (FileImage fileImage : fileImages) {
                     String imageUrl = fileImage.getImageUrl();
+                    log.info("处理图片 URL: {}", imageUrl);
+
                     CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
                                 try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(imageUrl));
                                      ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
@@ -145,29 +161,35 @@ public class ViewFileController {
                             });
                     futures.add(future);
                 }
+
                 // 等待所有异步任务完成
                 CompletableFuture<Void> allFutures = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
                 allFutures.join();
+
                 // 收集结果
                 List<String> base64Images = futures.stream()
                         .map(CompletableFuture::join)
                         .filter(Objects::nonNull)
                         .collect(Collectors.toList());
+                log.info("Base64 图片数量: {}", base64Images.size());
 
                 // 将 ProductInfo、FileInfo 和关联的 FileImage 记录封装到 FileInfoResponse 对象中
                 FileInfoResponse fileInfoResponse = new FileInfoResponse(productInfo, fileInfo, fileImages);
-                fileInfoResponse.setImageUrls(base64Images); // 假设 FileInfoResponse 有一个 setBase64Images 方法
+                fileInfoResponse.setImageUrls(base64Images); // 假设 FileInfoResponse 有一个 setImageUrls 方法
                 fileInfoResponseList.add(fileInfoResponse);
+            } else {
+                log.warn("未找到与文件名 {} 关联的 FileInfo 记录", fileName);
             }
         }
 
         // 创建返回的 Page 对象
         Page<FileInfoResponse> responsePage = new Page<>(productInfoPageResult.getCurrent(), productInfoPageResult.getSize(), productInfoPageResult.getTotal());
         responsePage.setRecords(fileInfoResponseList);
+        log.info("最终返回的 FileInfoResponse 数量: {}", fileInfoResponseList.size());
+
         // 返回封装好的数据
         return RespondUtils.success(responsePage, "查询成功！");
     }
-
 
 
 

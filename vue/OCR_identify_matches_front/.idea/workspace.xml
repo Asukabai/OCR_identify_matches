@@ -5,12 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="50189ba1-f00b-47ae-b134-b76198858b81" name="更改" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/config/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/config/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/views/Footer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/views/Footer.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/utils/sensorFile.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/sensorFile.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/yarn.lock" beforeDir="false" afterPath="$PROJECT_DIR$/yarn.lock" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -55,11 +52,23 @@
       <workItem from="1736302351704" duration="11146000" />
       <workItem from="1736321957888" duration="43000" />
       <workItem from="1736322005360" duration="3764000" />
-      <workItem from="1736652551973" duration="2098000" />
+      <workItem from="1736652551973" duration="2698000" />
+      <workItem from="1739871304491" duration="5125000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
 </project>
