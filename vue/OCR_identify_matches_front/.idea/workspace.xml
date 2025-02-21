@@ -6,7 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="50189ba1-f00b-47ae-b134-b76198858b81" name="更改" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/config/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/views/ViewFile.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/views/ViewFile.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/Request.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/Request.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/utils/sensorFile.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/sensorFile.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -53,7 +54,7 @@
       <workItem from="1736321957888" duration="43000" />
       <workItem from="1736322005360" duration="3764000" />
       <workItem from="1736652551973" duration="2698000" />
-      <workItem from="1739871304491" duration="5125000" />
+      <workItem from="1739871304491" duration="13962000" />
     </task>
     <servers />
   </component>

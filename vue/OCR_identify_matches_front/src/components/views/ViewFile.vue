@@ -200,11 +200,12 @@ export default {
         let param = { 'query': 'all', 'pageNum': this.currentPage, 'pageSize': this.pageSize };
         SensorFile.searchOperations(param, (response) => {
           this.$message({
-            message: '查询成功',
+            // message: '查询成功',
+            message: response.msg,
             type: 'success'
           });
-          this.operations = response.records || [];
-          this.totalItems = response.total;
+          this.operations = response.respData.records || [];
+          this.totalItems = response.respData.total;
           this.updateCurrentPageData();
           this.loading = false; // 请求成功后设置 loading 为 false
         }, (error) => {
@@ -229,11 +230,12 @@ export default {
         console.log(trimmedQuery);
         SensorFile.searchOperations(param, (response) => {
           this.$message({
-            message: '查询成功',
+            // message: '查询成功',
+            message: response.msg,
             type: 'success'
           });
-          this.operations = response.records || [];
-          this.totalItems = response.total;
+          this.operations = response.respData.records || [];
+          this.totalItems = response.respData.total;
           this.updateCurrentPageData();
           this.loading = false; // 请求成功后设置 loading 为 false
         }, (error) => {
@@ -275,6 +277,7 @@ export default {
         message: '重置成功！',
         type: 'success'
       });
+      window.location.reload(); // 添加这行代码以重新加载页面
     },
     goUerCardStorageOperate() {
       this.$router.push({ path: '/ssPrice/web/uploadFile' });

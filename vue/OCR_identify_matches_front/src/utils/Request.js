@@ -20,7 +20,7 @@ export function PostData(method, postURL, data,  callSuccess, callFail) {
     token: userToken,
     reqData: data
   };
-
+  // 在调用 callSuccess 时，传递一个包含 msg 和 respData 的对象。
   return axios.post(postURL, JSON.stringify(postPack), {
     headers: {
       "content-type": "application/json"
@@ -29,9 +29,15 @@ export function PostData(method, postURL, data,  callSuccess, callFail) {
     .then(function (response) {
       if (response.data.result === 1) {
         if (callSuccess) {
-          callSuccess(response.data.respData);
+          callSuccess({
+            msg: response.data.msg,
+            respData: response.data.respData
+          });
         }
-        return response.data.respData; // 返回成功数据
+        return {
+          msg: response.data.msg,
+          respData: response.data.respData
+        }; // 返回成功数据
       } else {
         if (callFail) {
           callFail(response.data.msg);
